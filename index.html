@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>미니홈피 - 자캐 다이어리 템플릿</title>
+    
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <style>
+        /* 🎨 CSS 변수 설정 */
+        :root {
+            --theme-color: #008B8B;
+        }
+
+        /* 폰트 설정 */
+        @font-face {
+            font-family: 'DungGeunMo';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        body {
+            font-family: 'DungGeunMo', 'Gulim', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        /* 🖥️ 전체 배경을 제어하는 별도 레이어 (필터 오류 방지) */
+        #bg-layer {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1;
+            background-color: #2b2b2b;
+            background-repeat: no-repeat;
+            transition: background-color 0.5s ease;
+        }
+
+        /* 다이어리 커버 및 속지 */
+        .diary-cover {
+            background-color: var(--theme-color); 
+            width: 1100px; height: 700px; border-radius: 15px;
+            padding: 20px; box-shadow: 10px 10px 25px rgba(0,0,0,0.6); display: flex; position: relative;
+            transition: background-color 0.3s ease;
+        }
+        .diary-page {
+            background-color: #fcfcfc; border: 1px solid #ccc; height: 100%; box-sizing: border-box;
+            padding: 25px; display: flex; flex-direction: column;
+        }
+        .left-page { width: 35%; border-radius: 8px 0 0 8px; box-shadow: inset -15px 0 20px -15px rgba(0,0,0,0.2); border-right: none; }
+        .diary-spine { width: 2px; background: linear-gradient(to bottom, #ddd, #999, #ddd); box-shadow: 0 0 5px rgba(0,0,0,0.3); z-index: 10; }
+        .right-page { width: 65%; border-radius: 0 8px 8px 0; box-shadow: inset 15px 0 20px -15px rgba(0,0,0,0.2); border-left: none; position: relative; }
+
+        /* 좌측 속지 요소 */
+        .visitor { text-align: center; font-size: 14px; margin-bottom: 15px; color: var(--theme-color); }
+        
+        /* ⭐ 프로필 사진 */
+        .profile-pic { width: 100%; height: 200px; background-color: #e9e9e9; border: 2px dashed #bbb; margin-bottom: 20px; display: flex; justify-content: center; align-items: center; color: #777; background-size: cover; background-position: top center; background-repeat: no-repeat; cursor: pointer; position: relative; overflow: hidden; }
+        .profile-pic::after { content: "📷 설정에서 사진 변경"; position: absolute; background: rgba(0,0,0,0.6); color: white; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; font-size: 14px; opacity: 0; transition: opacity 0.2s; }
+        .profile-pic:hover::after { opacity: 1; }
+        
+        .today-mood { margin-bottom: 20px; padding: 8px; border: 1px solid #ccc; background-color: #fff; }
+        .today-mood select { width: 100%; font-family: 'DungGeunMo'; border: none; outline: none; background: transparent; }
+
+        .padotagi-container { margin-top: auto; border-top: 2px dashed #ccc; padding-top: 15px; display: flex; flex-direction: column; gap: 8px; }
+        .padotagi-box { display: flex; gap: 5px; }
+        .padotagi-box select { flex-grow: 1; font-family: 'DungGeunMo'; padding: 5px; border: 1px solid #ccc; }
+        
+        /* 버튼 공통 스타일 */
+        .btn-style { font-family: 'DungGeunMo'; background-color: #2b2b2b; color: white; border: none; cursor: pointer; padding: 8px 12px; border-radius: 3px; transition: filter 0.2s; }
+        .btn-style:hover { filter: brightness(1.3); }
+        .btn-theme { background-color: var(--theme-color); }
+        .btn-danger { background-color: #d9534f; color: white; border: 1px solid #c9302c; }
+        .btn-danger:hover { background-color: #c9302c; }
+
+        /* 우측 속지 요소 */
+        .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .hompy-title { font-size: 24px; font-weight: bold; color: var(--theme-color); }
+        
+        .bgm-display { font-size: 12px; background: #fff; border: 1px solid #ccc; padding: 5px 15px; border-radius: 20px; color: #555; display: flex; align-items: center; gap: 8px; }
+        .bgm-btn { background: #eee; border: 1px solid #ccc; border-radius: 50%; width: 22px; height: 22px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 12px; }
+        .bgm-btn:hover { background: #ddd; }
+
+        .content-area { flex-grow: 1; border: 1px solid #ccc; background-color: #fff; padding: 20px; overflow-y: auto; border-radius: 5px; display: flex; flex-direction: column; }
+        .tab-content { display: none; animation: fadeIn 0.4s; flex-grow: 1; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 우측 탭 */
+        .diary-tabs { list-style: none; padding: 0; margin: 0; position: absolute; right: -70px; top: 40px; display: flex; flex-direction: column; gap: 8px; }
+        .diary-tabs li { background-color: #e0e0e0; color: #333; border: 1px solid #ccc; border-left: none; border-radius: 0 10px 10px 0; padding: 12px 10px; width: 60px; text-align: center; cursor: pointer; transition: 0.2s; box-shadow: 3px 3px 5px rgba(0,0,0,0.2); }
+        .diary-tabs li:hover, .diary-tabs li.active { background-color: var(--theme-color); color: white; border-color: #333; font-weight: bold; width: 70px; }
+
+        /* 프로필 정보 테이블 */
+        .profile-table { width: 100%; border-collapse: collapse; }
+        .profile-table th, .profile-table td { border-bottom: 1px dashed #ccc; padding: 12px 5px; text-align: left; }
+        .profile-table th { width: 30%; color: var(--theme-color); }
+        .profile-input { width: 95%; font-family: 'DungGeunMo'; padding: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+
+        /* 게시판 스타일 */
+        .board-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--theme-color); padding-bottom: 5px; margin-top: 0; margin-bottom: 15px; }
+        .post-item { border: 1px solid #ccc; background: #fff; margin-bottom: 20px; border-radius: 3px; }
+        .post-header { background: #f5f5f5; border-bottom: 1px dashed #ccc; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .post-title { font-weight: bold; color: var(--theme-color); font-size: 15px; }
+        .post-title::before { content: '▪ '; color: var(--theme-color); }
+        .post-date { font-size: 12px; color: #888; }
+        .post-content { padding: 20px 15px; font-size: 14px; line-height: 1.6; min-height: 80px; overflow-wrap: break-word; }
+        .post-footer { text-align: right; padding: 8px 15px; background: #fafafa; border-top: 1px dashed #ccc; }
+
+        /* 글쓰기 에디터 */
+        .editor-title-input { width: 100%; padding: 10px; font-family: 'DungGeunMo'; font-size: 16px; border: 1px solid #ccc; box-sizing: border-box; margin-bottom: 10px; }
+        .editor-toolbar { display: flex; gap: 5px; background: #eee; padding: 5px; border: 1px solid #ccc; border-bottom: none; }
+        .editor-toolbar button, .editor-toolbar select { font-family: 'DungGeunMo'; padding: 5px 8px; cursor: pointer; border: 1px solid #ccc; background: white; }
+        .editor-toolbar button:hover { background: #e0e0e0; }
+        .editor-content-box { width: 100%; height: 300px; padding: 15px; font-family: 'DungGeunMo'; font-size: 14px; border: 1px solid #ccc; box-sizing: border-box; background: white; overflow-y: auto; outline: none; line-height: 1.6; }
+        .editor-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+
+        /* 사진첩 */
+        .gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .polaroid { background: white; padding: 10px 10px 15px 10px; border: 1px solid #ccc; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); text-align: center; font-size: 13px; position: relative; }
+        /* ⭐ 갤러리 사진 */
+        .polaroid-img { width: 100%; height: 160px; background-color: #eee; margin-bottom: 10px; background-size: cover; background-position: top center; background-repeat: no-repeat; }
+        .delete-photo-btn { position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; border: none; padding: 2px 6px; cursor: pointer; font-size: 10px; }
+
+        /* 설정 및 모달 */
+        .setting-group { margin-bottom: 20px; padding: 15px; border: 1px dashed #ccc; border-radius: 5px; background: #fafafa; }
+        .setting-group label { display: block; font-weight: bold; margin-bottom: 5px; color: var(--theme-color); }
+        .setting-desc { font-size: 12px; color: #666; margin-bottom: 10px; margin-top: 0; }
+        .setting-input { width: 95%; font-family: 'DungGeunMo'; padding: 8px; border: 1px solid #ccc; margin-top: 5px; }
+        
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 999; justify-content: center; align-items: center; }
+        .modal-content { background: #f8f8f8; padding: 30px; border-radius: 10px; width: 400px; border: 3px solid var(--theme-color); font-family: 'DungGeunMo'; }
+        .modal-content h2 { color: var(--theme-color); margin-top: 0; text-align: center; }
+        .modal-content label { display: block; margin-top: 10px; font-weight: bold; }
+        .modal-content input, .modal-content textarea { width: 100%; padding: 8px; margin-top: 5px; font-family: 'DungGeunMo'; border: 1px solid #ccc; box-sizing: border-box; }
+        .modal-btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .modal-btn-group button { flex: 1; padding: 10px; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+<div id="bg-layer"></div>
+
+<div style="position: absolute; width: 0; height: 0; overflow: hidden;">
+    <div id="yt-player-container"></div>
+</div>
+
+<div class="modal-overlay" id="characterModal">
+    <div class="modal-content">
+        <h2>새 캐릭터 추가</h2>
+        <label>이름</label><input type="text" id="new-name" placeholder="예: 홍길동">
+        <label>나이 / 성별</label><input type="text" id="new-age" placeholder="예: 20세 / 비공개">
+        <label>성격</label><input type="text" id="new-personality" placeholder="캐릭터의 성격">
+        <label>특징 및 설정</label><textarea id="new-features" rows="4" placeholder="세부 설정을 적어주세요"></textarea>
+        <div class="modal-btn-group">
+            <button class="btn-style btn-theme" onclick="saveNewCharacter()">생성</button>
+            <button class="btn-style" style="background-color: #999;" onclick="closeModal('characterModal')">취소</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="photoModal">
+    <div class="modal-content" style="width: 450px;">
+        <h2>새 사진 등록</h2>
+        <label>이미지 주소 (URL)</label>
+        <p class="setting-desc" style="margin-top:5px;">웹상의 이미지 우클릭 -> '이미지 주소 복사' 후 붙여넣기</p>
+        <input type="text" id="photo-url" placeholder="https://..." oninput="previewImage('photo')">
+        
+        <div id="photo-preview-container" style="display:none; margin-top: 15px; text-align: center; background: #fff; padding: 10px; border: 1px dashed #ccc;">
+            <div id="photo-preview-box" style="width: 250px; height: 160px; margin: 0 auto; background-color: #eee; background-repeat: no-repeat; background-position: center; background-size: 100%; border-radius: 3px; border: 1px solid #ccc; margin-bottom: 10px;"></div>
+            
+            <div style="margin-top: 10px; display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('photo', 'none')">원본</button>
+                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('photo', 'grayscale(100%)')">흑백</button>
+                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('photo', 'sepia(80%)')">세피아</button>
+                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('photo', 'contrast(150%)')">선명하게</button>
+                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('photo', 'brightness(130%)')">밝게</button>
+                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('photo', 'brightness(70%)')">어둡게</button>
+                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('photo', 'saturate(50%)')">물빠진</button>
+                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('photo', 'sepia(80%) hue-rotate(180deg) saturate(150%) brightness(100%)')">블루 소다</button>
+                 <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('photo', 'sepia(0.6) saturate(400%) hue-rotate(290deg) brightness(1.1)')">Y2K 핑크</button>
+                 <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('photo', 'brightness(1.1) contrast(1.1) sepia(0.4) saturate(200%) hue-rotate(-20deg) blur(0.6px)')">하이틴</button>
+                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('photo', 'hue-rotate(90deg)')">색상변경</button>
+                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('photo', 'invert(100%)')">반전</button>
+            </div>
+            <input type="hidden" id="photo-filter" value="none">
+
+            <div style="margin-top: 15px; text-align: left; font-size: 12px; font-weight: bold;">
+                <div style="margin-bottom: 5px;">
+                    <label>🔍 크기 조절: <span id="val-photo-size">100</span>%</label>
+                    <input type="range" id="photo-size" min="10" max="300" value="100" style="width: 100%; cursor: pointer;" oninput="updateImageSettings('photo')">
+                </div>
+                <div style="margin-bottom: 5px;">
+                    <label>↔️ 가로 위치: <span id="val-photo-x">50</span>%</label>
+                    <input type="range" id="photo-x" min="0" max="100" value="50" style="width: 100%; cursor: pointer;" oninput="updateImageSettings('photo')">
+                </div>
+                <div>
+                    <label>↕️ 세로 위치: <span id="val-photo-y">50</span>%</label>
+                    <input type="range" id="photo-y" min="0" max="100" value="50" style="width: 100%; cursor: pointer;" oninput="updateImageSettings('photo')">
+                </div>
+            </div>
+        </div>
+
+        <label style="margin-top: 15px;">짧은 코멘트</label>
+        <input type="text" id="photo-desc" placeholder="사진에 대한 설명">
+        <div class="modal-btn-group">
+            <button class="btn-style btn-theme" onclick="savePhoto()">업로드</button>
+            <button class="btn-style" style="background-color: #999;" onclick="closeModal('photoModal')">취소</button>
+        </div>
+    </div>
+</div>
+
+<div class="diary-cover">
+    <div class="diary-page left-page">
+        <div class="visitor">TODAY <span style="color:red;">1</span> | TOTAL 100</div>
+        
+        <div class="profile-pic" id="display-pic" onclick="editProfilePic()">
+            <span id="pic-placeholder" style="color:#777;">(프로필 사진 없음)</span>
+        </div>
+        
+        <div class="today-mood">
+            <select>
+                <option>TODAY IS.. ☁️ 무난함</option>
+                <option>TODAY IS.. ✨ 기분 최고</option>
+                <option>TODAY IS.. 🌧️ 우울함</option>
+            </select>
+        </div>
+        <div class="padotagi-container">
+            <div class="padotagi-box">
+                <select id="ilchon-list" onchange="switchCharacter()"></select>
+                <button class="btn-style btn-theme" onclick="switchCharacter()">이동</button>
+            </div>
+            <button class="btn-style" onclick="openModal('characterModal')">+ 새 캐릭터 추가</button>
+        </div>
+    </div>
+
+    <div class="diary-spine"></div>
+
+    <div class="diary-page right-page">
+        <div class="header-area">
+            <div class="hompy-title" id="display-title">✨ 미니홈피 ✨</div>
+            
+            <div class="bgm-display">
+                🎵 <span id="bgm-status-text">재생 중인 BGM이 없습니다</span>
+                <button id="bgm-toggle-btn" class="bgm-btn" style="display:none;" onclick="toggleBGM()">▶</button>
+            </div>
+        </div>
+
+        <div class="content-area">
+            
+            <div id="profile" class="tab-content active">
+                <div class="board-header">
+                    <h3 style="color:var(--theme-color); margin:0;">기본 정보</h3>
+                    <button id="profile-edit-btn" class="btn-style btn-theme" style="padding: 4px 8px; font-size: 12px;" onclick="toggleProfileEdit()">✍️ 수정</button>
+                </div>
+                
+                <table class="profile-table" id="profile-view-mode">
+                    <tr><th>이름</th><td id="display-name">-</td></tr>
+                    <tr><th>나이/성별</th><td id="display-age">-</td></tr>
+                    <tr><th>성격</th><td id="display-personality">-</td></tr>
+                    <tr><th>특징</th><td id="display-features">-</td></tr>
+                </table>
+                
+                <table class="profile-table" id="profile-edit-mode" style="display: none;">
+                    <tr><th>이름</th><td><input type="text" id="edit-name" class="profile-input"></td></tr>
+                    <tr><th>나이/성별</th><td><input type="text" id="edit-age" class="profile-input"></td></tr>
+                    <tr><th>성격</th><td><input type="text" id="edit-personality" class="profile-input"></td></tr>
+                    <tr><th>특징</th><td><textarea id="edit-features" class="profile-input" rows="4"></textarea></td></tr>
+                </table>
+            </div>
+
+            <div id="board" class="tab-content">
+                <div class="board-header">
+                    <h3 style="color:var(--theme-color); margin:0;">기록 보관소</h3>
+                    <button class="btn-style btn-theme" style="padding: 4px 8px; font-size: 12px;" onclick="openEditor()">✍️ 글쓰기</button>
+                </div>
+                <div id="board-container"></div>
+            </div>
+
+            <div id="post-write" class="tab-content">
+                <div class="board-header"><h3 style="color:var(--theme-color); margin:0;">✍️ 새 기록 남기기</h3></div>
+                <input type="text" id="editor-title" class="editor-title-input" placeholder="글 제목을 입력하세요">
+                <div class="editor-toolbar">
+                    <select id="font-size-select" onchange="formatText('fontSize', this.value); this.selectedIndex=0;">
+                        <option value="">크기</option><option value="2">작게</option><option value="3">보통</option><option value="5">크게</option>
+                    </select>
+                    <button onclick="formatText('bold')" title="굵게"><b>B</b></button>
+                    <button onclick="formatText('italic')" title="기울임"><i>I</i></button>
+                    <button onclick="formatText('underline')" title="밑줄"><u>U</u></button>
+                    <button onclick="formatText('strikeThrough')" title="취소선"><s>S</s></button>
+                    <span style="border-left: 1px solid #ccc; margin: 0 5px;"></span>
+                    <button onclick="formatText('foreColor', '#333')" style="color:#333; font-weight:bold;">A</button>
+                    <button onclick="formatText('foreColor', '#d9534f')" style="color:#d9534f; font-weight:bold;">A</button>
+                    <button onclick="formatText('foreColor', '#008B8B')" style="color:#008B8B; font-weight:bold;">A</button>
+                </div>
+                <div id="editor-content" class="editor-content-box" contenteditable="true" placeholder="내용을 입력하세요."></div>
+                <div class="editor-actions">
+                    <button class="btn-style" onclick="cancelWrite()">취소</button>
+                    <button class="btn-style btn-theme" onclick="savePost()">등록</button>
+                </div>
+            </div>
+
+            <div id="gallery" class="tab-content">
+                <div class="board-header">
+                    <h3 style="color:var(--theme-color); margin:0;">추억 앨범</h3>
+                    <button class="btn-style btn-theme" style="padding: 4px 8px; font-size: 12px;" onclick="openModal('photoModal')">📸 사진 올리기</button>
+                </div>
+                <div class="gallery-grid" id="gallery-container"></div>
+            </div>
+
+            <div id="settings" class="tab-content">
+                <h3 style="color:var(--theme-color); border-bottom:2px solid var(--theme-color); padding-bottom:5px; margin-top:0;">⚙️ 현재 캐릭터 디자인 설정</h3>
+                <p style="font-size: 13px; color: #d9534f; margin-top:-5px; font-weight:bold;">※ 아래 설정은 현재 선택된 캐릭터에게만 적용됩니다.</p>
+                
+                <div class="setting-group">
+                    <label>🖼️ 프로필 사진 설정</label>
+                    <input type="text" id="profile-url" class="setting-input" placeholder="https://..." oninput="previewImage('profile')">
+                    
+                    <div id="profile-preview-container" style="display:none; margin-top: 10px; text-align: center; background: #fff; padding: 10px; border: 1px dashed #ccc;">
+                        <div id="profile-preview-box" style="width: 310px; height: 200px; margin: 0 auto; background-color: #eee; background-repeat: no-repeat; background-position: center; background-size: 100%; border-radius: 5px; border: 1px dashed #bbb; margin-bottom: 10px;"></div>
+                        
+                        <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                            <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('profile', 'none')">원본</button>
+                            <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('profile', 'grayscale(100%)')">흑백</button>
+                            <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('profile', 'sepia(80%)')">세피아</button>
+                            <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('profile', 'contrast(150%)')">선명하게</button>
+                             <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('profile', 'saturate(50%)')">물빠진</button>
+                             <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('profile', 'sepia(80%) hue-rotate(180deg) saturate(150%) brightness(100%)')">블루 소다</button>
+                              <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('profile', 'sepia(0.6) saturate(400%) hue-rotate(290deg) brightness(1.1)')">Y2K 핑크</button>
+                              <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('profile', 'brightness(1.1) contrast(1.1) sepia(0.4) saturate(200%) hue-rotate(-20deg) blur(0.6px)')">하이틴</button>
+                        </div>
+                        <input type="hidden" id="profile-filter" value="none">
+
+                        <div style="margin-top: 10px; text-align: left; font-size: 12px; font-weight: bold;">
+                            <div><label>🔍 크기: <span id="val-profile-size">100</span>%</label>
+                            <input type="range" id="profile-size" min="10" max="300" value="100" style="width: 100%;" oninput="updateImageSettings('profile')"></div>
+                            <div><label>↔️ 가로: <span id="val-profile-x">50</span>%</label>
+                            <input type="range" id="profile-x" min="0" max="100" value="50" style="width: 100%;" oninput="updateImageSettings('profile')"></div>
+                            <div><label>↕️ 세로: <span id="val-profile-y">50</span>%</label>
+                            <input type="range" id="profile-y" min="0" max="100" value="50" style="width: 100%;" oninput="updateImageSettings('profile')"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label>🎵 배경음악 설정</label>
+                    <p class="setting-desc">유튜브 링크를 입력하세요.</p>
+                    <input type="text" id="setting-bgm" class="setting-input" placeholder="https://youtu.be/...">
+                </div>
+
+                <div class="setting-group">
+                    <label>🎨 다이어리 테마 색상</label>
+                    <input type="color" id="setting-theme" style="width: 50px; height: 40px; cursor: pointer;">
+                </div>
+
+                <div class="setting-group">
+                    <label>🖥️ 바탕화면 (배경) 설정</label>
+                    <div>
+                        <input type="radio" name="bg-type" id="bg-type-color" value="color" checked onchange="toggleBgInput()"> 단색
+                        <input type="radio" name="bg-type" id="bg-type-image" value="image" onchange="toggleBgInput()"> 이미지 URL
+                    </div>
+                    <div id="bg-color-container" style="margin-top: 10px;">
+                        <input type="color" id="setting-bg-color" style="width: 50px; height: 40px;">
+                    </div>
+                    <div id="bg-image-container" style="display: none; margin-top: 10px;">
+                        <input type="text" id="bg-url" class="setting-input" placeholder="이미지 URL" oninput="previewImage('bg')">
+                        
+                        <div id="bg-preview-container" style="display:none; margin-top: 10px; text-align: center; background: #fff; padding: 10px; border: 1px dashed #ccc;">
+                            <div id="bg-preview-box" style="width: 100%; aspect-ratio: 16 / 9; background-color: #eee; background-repeat: no-repeat; background-position: center; background-size: 100%; border-radius: 3px; border: 1px solid #ccc; margin-bottom: 10px;"></div>
+                            
+                            <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('bg', 'none')">원본</button>
+                                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('bg', 'grayscale(100%)')">흑백</button>
+                                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('bg', 'sepia(80%)')">세피아</button>
+                                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('bg', 'brightness(50%)')">어둡게</button>
+                                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('bg', 'saturate(50%)')">물빠진</button>
+                                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('bg', 'sepia(80%) hue-rotate(180deg) saturate(150%) brightness(100%)')">블루 소다</button>
+                                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('bg', 'sepia(0.6) saturate(400%) hue-rotate(270deg) brightness(1.1)')">Y2K 핑크</button>
+                                <button class="btn-style" style="font-size: 11px;" onclick="applyFilter('bg', 'brightness(1.1) contrast(1.1) sepia(0.4) saturate(200%) hue-rotate(-20deg) blur(0.6px)')">하이틴</button>
+                            </div>
+                            <input type="hidden" id="bg-filter" value="none">
+
+                            <div style="margin-top: 10px; text-align: left; font-size: 12px; font-weight: bold;">
+                                <div><label>🔍 크기: <span id="val-bg-size">100</span>%</label>
+                                <input type="range" id="bg-size" min="10" max="300" value="100" style="width: 100%;" oninput="updateImageSettings('bg')"></div>
+                                <div><label>↔️ 가로: <span id="val-bg-x">50</span>%</label>
+                                <input type="range" id="bg-x" min="0" max="100" value="50" style="width: 100%;" oninput="updateImageSettings('bg')"></div>
+                                <div><label>↕️ 세로: <span id="val-bg-y">50</span>%</label>
+                                <input type="range" id="bg-y" min="0" max="100" value="50" style="width: 100%;" oninput="updateImageSettings('bg')"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <button class="btn-style btn-theme" style="width: 100%; padding: 12px; font-size: 16px;" onclick="applySettings()">✨ 설정 저장 ✨</button>
+                </div>
+
+                <div class="setting-group" style="background: #eee; border-color: #bbb;">
+                    <label>💾 전체 데이터 백업 및 복구</label>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button class="btn-style" style="background-color: #555; flex: 1; padding: 10px;" onclick="exportData()">다운로드(백업)</button>
+                        <button class="btn-style" style="background-color: #555; flex: 1; padding: 10px;" onclick="document.getElementById('import-file').click()">불러오기</button>
+                        <input type="file" id="import-file" style="display:none;" accept=".json" onchange="importData(event)">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <ul class="diary-tabs">
+            <li class="active" onclick="changeTab('profile', this)">프로필</li>
+            <li id="tab-btn-board" onclick="changeTab('board', this)">게시판</li>
+            <li onclick="changeTab('gallery', this)">사진첩</li>
+            <li onclick="changeTab('settings', this)">설정</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    // ✅ 설정 데이터 구조 확장
+    const defaultTemplate = {
+        "char_default": {
+            id: "char_default",
+            name: "기본 캐릭터", age: "비공개", personality: "친절함",
+            features: "여기에 캐릭터의 세부 설정을 적어주세요.",
+            settings: { 
+                profilePic: "", profileFilter: "none", profileSize: "100", profileX: "50", profileY: "50", 
+                bgm: "", themeColor: "#008B8B", 
+                bgType: "color", bgColor: "#2b2b2b", bgImage: "", bgFilter: "none", bgSize: "100", bgX: "50", bgY: "50" 
+            },
+            board: [{ id: "post_1", title: "첫 번째 기록", content: "에디터를 이용해 글을 남겨보세요.", date: "2026. 03. 14" }],
+            gallery: []
+        }
+    };
+
+    let charDB = JSON.parse(localStorage.getItem("cyworld_template_db")) || defaultTemplate;
+    let currentCharId = localStorage.getItem("cyworld_template_current_id") || "char_default";
+    if (!charDB[currentCharId]) currentCharId = Object.keys(charDB)[0];
+
+    // ==========================================
+    // ⭐ 유튜브 API 제어 로직
+    // ==========================================
+    let ytPlayer = null;
+    let isPlayingBGM = false;
+    let currentBgmId = "";
+    let isYtApiReady = false;
+
+    function onYouTubeIframeAPIReady() { isYtApiReady = true; }
+
+    function toggleBGM() {
+        if(isPlayingBGM) pauseBGM();
+        else playBGM();
+    }
+
+    function playBGM() {
+        if(!currentBgmId) return;
+        if (ytPlayer) {
+            if (ytPlayer.getVideoData && ytPlayer.getVideoData().video_id !== currentBgmId) { ytPlayer.loadVideoById(currentBgmId); } 
+            else { ytPlayer.playVideo(); }
+        } else {
+            ytPlayer = new YT.Player('yt-player-container', {
+                height: '10', width: '10', videoId: currentBgmId,
+                playerVars: { 'autoplay': 1, 'loop': 1, 'playlist': currentBgmId, 'controls': 0 },
+                events: {
+                    'onReady': function(event) { event.target.playVideo(); },
+                    'onError': function(event) {
+                        console.error("YouTube Player Error");
+                        document.getElementById('bgm-status-text').innerText = "음악 재생 불가";
+                        document.getElementById('bgm-toggle-btn').innerText = "▶";
+                        isPlayingBGM = false;
+                    }
+                }
+            });
+        }
+        document.getElementById('bgm-status-text').innerText = "음악 재생 중 🎧";
+        document.getElementById('bgm-toggle-btn').innerText = "⏸";
+        isPlayingBGM = true;
+    }
+
+    function pauseBGM() {
+        if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') ytPlayer.pauseVideo();
+        document.getElementById('bgm-status-text').innerText = "음악 일시정지됨";
+        document.getElementById('bgm-toggle-btn').innerText = "▶";
+        isPlayingBGM = false;
+    }
+
+    // ==========================================
+    // 초기 로드
+    // ==========================================
+    window.onload = function() {
+        updateDropdown();
+        renderCharacter(currentCharId);
+    };
+
+    function changeTab(tabId, element) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.diary-tabs li').forEach(m => m.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        if(element) element.classList.add('active');
+    }
+
+    function toggleBgInput() {
+        const isColor = document.getElementById('bg-type-color').checked;
+        document.getElementById('bg-color-container').style.display = isColor ? 'block' : 'none';
+        document.getElementById('bg-image-container').style.display = !isColor ? 'block' : 'none';
+    }
+
+    function openModal(modalId) { document.getElementById(modalId).style.display = 'flex'; }
+    function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+
+    // ==========================================
+    // 캐릭터 관리
+    // ==========================================
+    function updateDropdown() {
+        const select = document.getElementById('ilchon-list');
+        select.innerHTML = "";
+        for (let key in charDB) {
+            let option = document.createElement('option');
+            option.value = key; option.text = "★ " + charDB[key].name;
+            if (key === currentCharId) option.selected = true;
+            select.appendChild(option);
+        }
+    }
+
+    function renderCharacter(id) {
+        if(!charDB[id]) return;
+        const char = charDB[id];
+        currentCharId = id;
+        localStorage.setItem("cyworld_template_current_id", id);
+
+        document.getElementById('display-title').innerText = `✨ ${char.name.split(' ')[0]}의 다이어리 ✨`;
+        document.getElementById('display-name').innerText = char.name;
+        document.getElementById('display-age').innerText = char.age;
+        document.getElementById('display-personality').innerText = char.personality;
+        document.getElementById('display-features').innerText = char.features;
+
+        isProfileEditing = false;
+        document.getElementById('profile-view-mode').style.display = 'table';
+        document.getElementById('profile-edit-mode').style.display = 'none';
+        document.getElementById('profile-edit-btn').innerText = '✍️ 수정';
+
+        // 이전 버전 데이터 호환 패치
+        if(!char.settings.profileFilter) {
+            char.settings = { ...defaultTemplate.char_default.settings, ...char.settings };
+        }
+
+        loadSettingsToUI(char.settings);
+        applySettingsToDOM(false); 
+        renderBoard();
+        renderGallery();
+    }
+
+    function switchCharacter() {
+        const selectedId = document.getElementById('ilchon-list').value;
+        renderCharacter(selectedId);
+        changeTab('profile', document.querySelector('.diary-tabs li:first-child'));
+    }
+
+    function saveNewCharacter() {
+        const name = document.getElementById('new-name').value.trim();
+        const age = document.getElementById('new-age').value.trim();
+        const personality = document.getElementById('new-personality').value.trim();
+        const features = document.getElementById('new-features').value.trim();
+        if (!name) { alert("이름은 필수입니다!"); return; }
+
+        const newId = "char_" + Date.now(); 
+        charDB[newId] = { 
+            id: newId, name, age, personality, features,
+            settings: { profilePic: "", profileFilter: "none", profileSize: "100", profileX: "50", profileY: "50", bgm: "", themeColor: "#008B8B", bgType: "color", bgColor: "#2b2b2b", bgImage: "", bgFilter: "none", bgSize: "100", bgX: "50", bgY: "50" },
+            board: [], gallery: []
+        };
+        saveDB(); closeModal('characterModal'); updateDropdown();
+        document.getElementById('ilchon-list').value = newId; switchCharacter();
+    }
+
+    // ==========================================
+    // 프로필 편집
+    // ==========================================
+    function editProfilePic() {
+        changeTab('settings', document.querySelectorAll('.diary-tabs li')[3]);
+        alert("설정 탭의 '프로필 사진 설정'에서 사진을 등록하고 편집해주세요!");
+    }
+
+    let isProfileEditing = false;
+    function toggleProfileEdit() {
+        const char = charDB[currentCharId];
+        if (!isProfileEditing) {
+            document.getElementById('edit-name').value = char.name;
+            document.getElementById('edit-age').value = char.age;
+            document.getElementById('edit-personality').value = char.personality;
+            document.getElementById('edit-features').value = char.features;
+            
+            document.getElementById('profile-view-mode').style.display = 'none';
+            document.getElementById('profile-edit-mode').style.display = 'table';
+            document.getElementById('profile-edit-btn').innerText = '💾 저장';
+            isProfileEditing = true;
+        } else {
+            const newName = document.getElementById('edit-name').value.trim();
+            if (!newName) { alert("이름은 비워둘 수 없습니다!"); return; }
+
+            char.name = newName;
+            char.age = document.getElementById('edit-age').value.trim();
+            char.personality = document.getElementById('edit-personality').value.trim();
+            char.features = document.getElementById('edit-features').value.trim();
+            
+            saveDB(); renderCharacter(currentCharId); updateDropdown();
+            isProfileEditing = false;
+        }
+    }
+
+    // ==========================================
+    // 게시판 & 에디터
+    // ==========================================
+    function renderBoard() {
+        const container = document.getElementById('board-container');
+        const posts = charDB[currentCharId].board || [];
+        container.innerHTML = "";
+        if(posts.length === 0) { container.innerHTML = "<p style='color:#888; text-align:center;'>등록된 글이 없습니다.</p>"; return; }
+
+        [...posts].reverse().forEach(post => {
+            const postHTML = `
+                <div class="post-item">
+                    <div class="post-header"><div class="post-title">${post.title}</div><div class="post-date">${post.date}</div></div>
+                    <div class="post-content">${post.content}</div>
+                    <div class="post-footer"><button class="btn-style btn-danger" style="padding: 2px 8px; font-size:11px;" onclick="deletePost('${post.id}')">삭제</button></div>
+                </div>
+            `;
+            container.innerHTML += postHTML;
+        });
+    }
+
+    function openEditor() {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('post-write').classList.add('active');
+        document.getElementById('editor-title').value = '';
+        document.getElementById('editor-content').innerHTML = '';
+        document.getElementById('editor-title').focus();
+    }
+
+    function cancelWrite() {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('board').classList.add('active');
+    }
+
+    function formatText(command, value = null) {
+        document.execCommand(command, false, value);
+        document.getElementById('editor-content').focus();
+    }
+
+    function savePost() {
+        const title = document.getElementById('editor-title').value.trim();
+        const contentHTML = document.getElementById('editor-content').innerHTML.trim();
+        if(!title || !contentHTML) { alert("제목과 내용을 모두 입력해주세요!"); return; }
+        const today = new Date();
+        const dateStr = `${today.getFullYear()}. ${String(today.getMonth()+1).padStart(2,'0')}. ${String(today.getDate()).padStart(2,'0')}`;
+        if(!charDB[currentCharId].board) charDB[currentCharId].board = [];
+        charDB[currentCharId].board.push({ id: "post_" + Date.now(), title: title, content: contentHTML, date: dateStr });
+        saveDB(); renderBoard(); cancelWrite(); 
+    }
+
+    function deletePost(postId) {
+        if(confirm("이 글을 정말 삭제하시겠습니까?")) {
+            charDB[currentCharId].board = charDB[currentCharId].board.filter(p => p.id !== postId);
+            saveDB(); renderBoard();
+        }
+    }
+
+    // ==========================================
+    // 🎨 통합 이미지 편집 (미리보기, 필터, 크기/위치 조절)
+    // ==========================================
+    function previewImage(target, isInitialLoad = false) {
+        const url = document.getElementById(target + '-url').value.trim();
+        const previewContainer = document.getElementById(target + '-preview-container');
+        const previewBox = document.getElementById(target + '-preview-box');
+        
+        if (url) {
+            previewBox.style.backgroundImage = `url('${url}')`;
+            previewContainer.style.display = 'block';
+            
+            // 처음 데이터를 불러올 때가 아닐 경우에만 기본값으로 세팅 리셋
+            if(!isInitialLoad) {
+                applyFilter(target, 'none');
+                document.getElementById(target + '-size').value = 100;
+                document.getElementById(target + '-x').value = 50;
+                document.getElementById(target + '-y').value = 50;
+            } else {
+                applyFilter(target, document.getElementById(target + '-filter').value);
+            }
+            updateImageSettings(target);
+        } else {
+            previewContainer.style.display = 'none';
+        }
+    }
+
+    function applyFilter(target, filterValue) {
+        document.getElementById(target + '-preview-box').style.filter = filterValue;
+        document.getElementById(target + '-filter').value = filterValue;
+    }
+
+    function updateImageSettings(target) {
+        const size = document.getElementById(target + '-size').value;
+        const x = document.getElementById(target + '-x').value;
+        const y = document.getElementById(target + '-y').value;
+        
+        document.getElementById(`val-${target}-size`).innerText = size;
+        document.getElementById(`val-${target}-x`).innerText = x;
+        document.getElementById(`val-${target}-y`).innerText = y;
+
+        const previewBox = document.getElementById(target + '-preview-box');
+        previewBox.style.backgroundSize = `${size}%`;
+        previewBox.style.backgroundPosition = `${x}% ${y}%`;
+    }
+
+    // ==========================================
+    // 사진첩 및 갤러리 렌더링
+    // ==========================================
+    function renderGallery() {
+        const container = document.getElementById('gallery-container');
+        const photos = charDB[currentCharId].gallery || [];
+        container.innerHTML = "";
+        
+        if(photos.length === 0) { 
+            container.innerHTML = "<p style='color:#888; grid-column: 1 / -1; text-align:center;'>등록된 사진이 없습니다.</p>"; 
+            return; 
+        }
+        
+        [...photos].reverse().forEach(photo => {
+            const filterStyle = photo.filter && photo.filter !== 'none' ? `filter: ${photo.filter};` : '';
+            const sizeStyle = photo.size ? `background-size: ${photo.size}%;` : 'background-size: cover;';
+            const posStyle = (photo.posX !== undefined && photo.posY !== undefined) ? `background-position: ${photo.posX}% ${photo.posY}%;` : 'background-position: center;';
+            
+            const photoHTML = `
+                <div class="polaroid">
+                    <button class="delete-photo-btn" onclick="deletePhoto('${photo.id}')">X</button>
+                    <div class="polaroid-img" style="background-image: url('${photo.url}'); ${sizeStyle} ${posStyle} ${filterStyle}"></div>
+                    <div style="margin-top: 5px;">${photo.desc}</div>
+                </div>`;
+            container.innerHTML += photoHTML;
+        });
+    }
+
+    function savePhoto() {
+        const url = document.getElementById('photo-url').value.trim();
+        const desc = document.getElementById('photo-desc').value.trim();
+        const filter = document.getElementById('photo-filter').value;
+        const size = document.getElementById('photo-size').value || 100;
+        const x = document.getElementById('photo-x').value || 50;
+        const y = document.getElementById('photo-y').value || 50;
+        
+        if(!url) { alert("이미지 주소를 입력해주세요!"); return; }
+        if(!charDB[currentCharId].gallery) charDB[currentCharId].gallery = [];
+        
+        charDB[currentCharId].gallery.push({ id: "photo_" + Date.now(), url: url, desc: desc, filter: filter, size: size, posX: x, posY: y });
+        
+        saveDB(); closeModal('photoModal');
+        
+        document.getElementById('photo-url').value = ''; 
+        document.getElementById('photo-desc').value = '';
+        document.getElementById('photo-preview-container').style.display = 'none';
+        
+        renderGallery();
+    }
+
+    function deletePhoto(photoId) {
+        if(confirm("이 사진을 삭제하시겠습니까?")) {
+            charDB[currentCharId].gallery = charDB[currentCharId].gallery.filter(p => p.id !== photoId);
+            saveDB(); renderGallery();
+        }
+    }
+
+    // ==========================================
+    // 설정값 적용
+    // ==========================================
+    function loadSettingsToUI(settings) {
+        // 프로필
+        document.getElementById('profile-url').value = settings.profilePic || "";
+        document.getElementById('profile-filter').value = settings.profileFilter || "none";
+        document.getElementById('profile-size').value = settings.profileSize || "100";
+        document.getElementById('profile-x').value = settings.profileX || "50";
+        document.getElementById('profile-y').value = settings.profileY || "50";
+        if(settings.profilePic) previewImage('profile', true); else document.getElementById('profile-preview-container').style.display = 'none';
+        
+        // 배경음악 및 색상
+        document.getElementById('setting-bgm').value = settings.bgm || "";
+        document.getElementById('setting-theme').value = settings.themeColor || "#008B8B";
+        
+        // 바탕화면
+        if (settings.bgType === "image") document.getElementById('bg-type-image').checked = true;
+        else document.getElementById('bg-type-color').checked = true;
+        toggleBgInput();
+        
+        document.getElementById('setting-bg-color').value = settings.bgColor || "#2b2b2b";
+        document.getElementById('bg-url').value = settings.bgImage || "";
+        document.getElementById('bg-filter').value = settings.bgFilter || "none";
+        document.getElementById('bg-size').value = settings.bgSize || "100";
+        document.getElementById('bg-x').value = settings.bgX || "50";
+        document.getElementById('bg-y').value = settings.bgY || "50";
+        if(settings.bgImage && settings.bgType === "image") previewImage('bg', true); else document.getElementById('bg-preview-container').style.display = 'none';
+    }
+
+    function applySettings() {
+        const char = charDB[currentCharId];
+        
+        char.settings.profilePic = document.getElementById('profile-url').value.trim();
+        char.settings.profileFilter = document.getElementById('profile-filter').value;
+        char.settings.profileSize = document.getElementById('profile-size').value;
+        char.settings.profileX = document.getElementById('profile-x').value;
+        char.settings.profileY = document.getElementById('profile-y').value;
+
+        char.settings.bgm = document.getElementById('setting-bgm').value.trim();
+        char.settings.themeColor = document.getElementById('setting-theme').value;
+        
+        char.settings.bgType = document.getElementById('bg-type-color').checked ? "color" : "image";
+        char.settings.bgColor = document.getElementById('setting-bg-color').value;
+        char.settings.bgImage = document.getElementById('bg-url').value.trim();
+        char.settings.bgFilter = document.getElementById('bg-filter').value;
+        char.settings.bgSize = document.getElementById('bg-size').value;
+        char.settings.bgX = document.getElementById('bg-x').value;
+        char.settings.bgY = document.getElementById('bg-y').value;
+
+        saveDB(); applySettingsToDOM(true);
+        alert("현재 캐릭터의 설정이 저장되었습니다!");
+    }
+
+    function applySettingsToDOM(isPlayAudio) {
+        const settings = charDB[currentCharId].settings;
+        
+        // ✅ 프로필 사진 렌더링
+        const picDiv = document.getElementById('display-pic');
+        const picPlaceholder = document.getElementById('pic-placeholder');
+        if (settings.profilePic) {
+            picDiv.style.backgroundImage = `url('${settings.profilePic}')`;
+            picDiv.style.backgroundSize = settings.profileSize ? `${settings.profileSize}%` : 'cover';
+            picDiv.style.backgroundPosition = (settings.profileX && settings.profileY) ? `${settings.profileX}% ${settings.profileY}%` : 'top center';
+            picDiv.style.filter = settings.profileFilter && settings.profileFilter !== 'none' ? settings.profileFilter : '';
+            if(picPlaceholder) picPlaceholder.style.display = 'none';
+        } else {
+            picDiv.style.backgroundImage = 'none';
+            picDiv.style.filter = '';
+            if(picPlaceholder) picPlaceholder.style.display = 'block';
+        }
+
+        document.documentElement.style.setProperty('--theme-color', settings.themeColor);
+        
+        // ✅ 배경 사진 렌더링 (bg-layer 사용)
+        const bgLayer = document.getElementById('bg-layer');
+        if (settings.bgType === "image" && settings.bgImage) {
+            bgLayer.style.backgroundColor = 'transparent';
+            bgLayer.style.backgroundImage = `url('${settings.bgImage}')`;
+            bgLayer.style.backgroundSize = settings.bgSize ? `${settings.bgSize}%` : 'cover';
+            bgLayer.style.backgroundPosition = (settings.bgX && settings.bgY) ? `${settings.bgX}% ${settings.bgY}%` : 'center';
+            bgLayer.style.filter = settings.bgFilter && settings.bgFilter !== 'none' ? settings.bgFilter : '';
+        } else {
+            bgLayer.style.backgroundImage = 'none';
+            bgLayer.style.filter = '';
+            bgLayer.style.backgroundColor = settings.bgColor || '#2b2b2b';
+        }
+
+        // BGM 적용
+        const bgmStatusText = document.getElementById('bgm-status-text');
+        const toggleBtn = document.getElementById('bgm-toggle-btn');
+        if (settings.bgm) {
+            const match = settings.bgm.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/|.*embed\/))([^&?]{11})/);
+            if (match && match[1]) {
+                currentBgmId = match[1];
+                toggleBtn.style.display = 'inline-flex';
+                if (isPlayAudio && isYtApiReady) playBGM();
+                else {
+                    if (ytPlayer && typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
+                    bgmStatusText.innerText = "음악 준비됨 (재생 버튼 클릭)"; toggleBtn.innerText = "▶"; isPlayingBGM = false;
+                }
+            } else { 
+                bgmStatusText.innerText = "유튜브 링크 오류!"; toggleBtn.style.display = 'none';
+                if (ytPlayer && typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
+            }
+        } else {
+            bgmStatusText.innerText = "재생 중인 BGM이 없습니다"; toggleBtn.style.display = 'none';
+            currentBgmId = ""; isPlayingBGM = false;
+            if (ytPlayer && typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
+        }
+    }
+
+    function saveDB() { localStorage.setItem("cyworld_template_db", JSON.stringify(charDB)); }
+    function exportData() {
+        const dataStr = JSON.stringify(charDB, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = "cyworld_template_backup.json";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                charDB = JSON.parse(e.target.result); saveDB();
+                const firstKey = Object.keys(charDB)[0];
+                currentCharId = firstKey; localStorage.setItem("cyworld_template_current_id", firstKey);
+                updateDropdown(); renderCharacter(currentCharId);
+                alert("데이터 복구가 완료되었습니다!");
+            } catch (error) { alert("올바른 백업 파일(.json)이 아닙니다."); }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+</script>
+
+</body>
+</html>
